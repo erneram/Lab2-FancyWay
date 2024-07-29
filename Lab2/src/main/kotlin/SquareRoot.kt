@@ -6,5 +6,4 @@ class SquareRoot : Operator("sqrt"){
     override fun precedence() = 3
 
     override fun apply(a: Double, b: Double) = sqrt(a)
-
 }
