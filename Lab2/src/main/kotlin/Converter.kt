@@ -1,5 +1,7 @@
 package org.example
 
+import java.util.*
+
 class Converter {
     private val operators = mapOf(
         "+" to Plus(),
@@ -10,54 +12,92 @@ class Converter {
     )
 
     fun inToPost(expression: String): String {
-        val output = mutableListOf<String>()
-        val operatorStack = mutableListOf<Operator>()
+        val stack = Stack<Char>()
+        val result = StringBuilder()
+        val operators = setOf('+', '-', '*', '/', '^')
 
-        for (token in expression.split(" ")) {
+        var i = 0
+        while (i < expression.length) {
+            val char = expression[i]
+
             when {
-                token.isDouble() -> output.add(token)
-                operators.containsKey(token) -> {
-                    val operator = operators[token]!!
-                    while (operatorStack.isNotEmpty() && operatorStack.last().precedence() >= operator.precedence()) {
-                        output.add(operatorStack.removeAt(operatorStack.lastIndex).toString())
+                char.isWhitespace() -> i++
+                char.isDigit() -> {
+                    while (i < expression.length && expression[i].isDigit()) {
+                        result.append(expression[i])
+                        i++
                     }
-                    operatorStack.add(operator)
+                    result.append(' ')  // separete numbers
                 }
-                token == "(" -> operatorStack.add(object : Operator("(") {
-                    override fun precedence() = Int.MIN_VALUE
-                    override fun apply(a: Double, b: Double) = throw UnsupportedOperationException()
-                })
-                token == ")" -> {
-                    while (operatorStack.isNotEmpty() && operatorStack.last().toString() != "(") {
-                        output.add(operatorStack.removeAt(operatorStack.lastIndex).toString())
+                char == '(' -> {
+                    stack.push(char)
+                    i++
+                }
+                char == ')' -> {
+                    while (stack.isNotEmpty() && stack.peek() != '(') {
+                        result.append(stack.pop()).append(' ')
                     }
-                    if (operatorStack.isNotEmpty()) operatorStack.removeAt(operatorStack.lastIndex) // Remove the "("
+                    if (stack.isNotEmpty() && stack.peek() == '(') {
+                        stack.pop()  // Remove '(' from stack
+                    } else {
+                        throw IllegalArgumentException("Unbalanced parentheses in expression")
+                    }
+                    i++
                 }
+                operators.contains(char) -> {
+                    while (stack.isNotEmpty() && precedence(stack.peek()) >= precedence(char)) {
+                        result.append(stack.pop()).append(' ')
+                    }
+                    stack.push(char)
+                    i++
+                }
+                else -> i++  // In case of unexpected character
             }
         }
 
-        while (operatorStack.isNotEmpty()) {
-            output.add(operatorStack.removeAt(operatorStack.lastIndex).toString())
+        while (stack.isNotEmpty()) {
+            val top = stack.pop()
+            if (top == '(' || top == ')') {
+                throw IllegalArgumentException("Unbalanced parentheses in expression")
+            }
+            result.append(top).append(' ')
         }
 
-        return output.joinToString(" ")
+        return result.toString().trim()
     }
 
-    fun postEvaluation(expression : String ): Double {
-        val output = mutableListOf<Double>()
+    private fun precedence(operator: Char): Int {
+        return when (operator) {
+            '+', '-' -> 1
+            '*', '/' -> 2
+            '^' -> 3
+            else -> -1
+        }
+    }
+
+    fun postEvaluation(expression: String): Double {
+        val stack = mutableListOf<Double>()
 
         for (token in expression.split(" ")) {
             when {
-                token.isDouble() -> output.add(token.toDouble())
+                token.isDouble() -> stack.add(token.toDouble())
                 operators.containsKey(token) -> {
-                    val b = output.removeAt(output.lastIndex)
-                    val a = output.removeAt(output.lastIndex)
+                    if (stack.size < 2) {
+                        throw IllegalArgumentException("No hay suficientes operandos para la operación")
+                    }
+                    val b = stack.removeAt(stack.lastIndex)
+                    val a = stack.removeAt(stack.lastIndex)
                     val result = operators[token]!!.apply(a, b)
-                    output.add(result)
+                    stack.add(result)
                 }
             }
         }
-        return output[0]
+
+        if (stack.size != 1) {
+            throw IllegalArgumentException("La expresión postfix es inválida")
+        }
+
+        return stack[0]
     }
 
     private fun String.isDouble() = this.toDoubleOrNull() != null

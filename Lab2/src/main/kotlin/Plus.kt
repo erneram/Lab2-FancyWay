@@ -5,4 +5,5 @@ class Plus : Operator("+") {
 
     override fun apply(a: Double, b: Double) = a + b
 
+    override fun toString() = "+"
 }

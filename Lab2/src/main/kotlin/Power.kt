@@ -7,4 +7,5 @@ class Power : Operator("^") {
 
     override fun apply(a: Double, b: Double) = a.pow(b)
 
+    override fun toString() = "^"
 }
